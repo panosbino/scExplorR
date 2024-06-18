@@ -4,26 +4,126 @@ format: html
 ---
 ```{r}
 library(Seurat)
+library(biomaRt)
 ```
 
-# 
+
+```{r}
+# Functions
+import_into_sobj <- function(data_dir){
+  sc_data <- Seurat::Read10X(
+    data.dir = data_dir, gene.column = 1
+  )
+  sobj <- Seurat::CreateSeuratObject(counts = sc_data)
+  rm(sc_data)
+  return(sobj)
+}
+
+get_mito_genes <- function(organism, ensembl_version){
+  ensembl <- useEnsembl(biomart = 'genes', 
+                       dataset = paste0(organism, '_gene_ensembl'),
+                       version = ensembl_version)
+
+  mito_genes <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),
+                        filters='chromosome_name', 
+                        values='MT', 
+                        mart=ensembl)
+  return(mito_genes)
+  
+}
+```
 
 ```{r}
 data_rep <- '../data/Skin'
 # sample_names <- list.files(data_rep)
 sample_names <- c("Skin_1", "Skin_2", "Skin_3", "Skin_4")
+```
 
+## Ensemble annotation
+### Mito Genes
+```{r}
+organism = "mfascicularis"
+ensembl_version = 109
+
+mito_genes <- get_mito_genes(organism, ensembl_version)
+```
+# Loaading
+```{r}
+sobj_list = list()
+for (sample_name in sample_names) {
+  print(sample_name)
+  ## here would go things that are necessary to do in a sample independent manner, i.e. noise correction and doublet detection, which we are skipping for now
+  # Import data into seurat object
+  sobj_temp <- import_into_sobj(data_dir =file.path(data_rep, sample_name, 'Solo.out', 'Gene', 'filtered'))
+  
+  # Rename cell barcode names
+  sobj_temp <- Seurat::RenameCells(sobj_temp, new.names = paste0(Cells(sobj_temp), ".", sample_name))
+  
+  # Append to list
+  sobj_list[[sample_name ]] <- sobj_temp
+}
+
+# Merge list
+sobj <- merge(sobj_list[[1]], sobj_list[2:length(sobj_list)])
+
+# Calculate Percent mito
+sobj[["percent.mt"]] <- PercentageFeatureSet(sobj, features = mito_genes$ensembl_gene_id)
+```
+
+```{r}
+library(purrr)
+
+
+sample_directories <- map(sample_names, \(sample_name) file.path(data_rep, sample_name, 'Solo.out', 'Gene', 'filtered')) |> 
+  setNames(sample_names)
+
+sobj_list <- map(sample_directories, import_into_sobj)
+
+
+
+map(sample_names, \(x) )
 
 ```
 
 
 ```{r}
+VlnPlot(sobj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+plot1 <- FeatureScatter(skin_1, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(skin_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+
+pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 25)
+
+
+```
+
+
+
+
+
+```{r}
 skin_1.data <- Seurat::Read10X(
-    data.dir = file.path(data_rep, sample_names[1], 'Solo.out', 'Gene', 'filtered')
+    data.dir = file.path(data_rep, sample_names[1], 'Solo.out', 'Gene', 'filtered'), gene.column = 1
 )
 
 skin_1 <- CreateSeuratObject(counts = skin_1.data,  project = "skin_1")
 
-str(skin_1)
+skin_1[["percent.mt"]] <- PercentageFeatureSet(skin_1, features = mito_genes$ensembl_gene_id)
+
+VlnPlot(skin_1, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+plot1 <- FeatureScatter(skin_1, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(skin_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+
+pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+
+```
+
+
+
+```{r}
+
 ```
 
