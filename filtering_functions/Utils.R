@@ -38,6 +38,8 @@ read_and_merge_sobjs <- function(data_rep, sample_names){
   }
   # Merge list
   sobj <- merge(sobj_list[[1]], sobj_list[2:length(sobj_list)])
+  sobj <- JoinLayers(sobj)
+
   return(sobj)
 }
 
