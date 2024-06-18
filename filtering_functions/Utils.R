@@ -53,6 +53,17 @@ load_and_annotate_recipe_1 <- function(data_rep, organism, ensembl_version){
   return(sobj)
 }
 
+show_QC_plots <- function(sobj){
+  require(patchwork)
+  top <- VlnPlot(sobj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+  bottom_1 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "percent.mt")
+  bottom_2 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+  return(top / (bottom_1 + bottom_2))
+
+}
+
 
 
 normalize_all <- function(sc_input_object,method = "cpm") {
