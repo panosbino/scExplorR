@@ -1,3 +1,13 @@
+get_possible_ensembl_versions <- function(){
+  require(biomaRt)
+  return(listEnsemblArchives()[['version']])
+}
+
+get_possible_organisms <- function(ensembl_version){
+  require(biomaRt)
+  ensembl <- useEnsembl(biomart = "genes", version = ensembl_version)
+  return(listDatasets(ensembl)[["dataset"]])
+}
 
 import_into_sobj <- function(data_dir, project_name){
 
