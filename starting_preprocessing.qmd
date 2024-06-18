@@ -34,9 +34,9 @@ get_mito_genes <- function(organism, ensembl_version){
 ```
 
 ```{r}
-data_rep <- '../data/Skin'
-# sample_names <- list.files(data_rep)
-sample_names <- c("Skin_1", "Skin_2", "Skin_3", "Skin_4")
+data_rep <- './sample_data/'
+sample_names <- list.files(data_rep)
+#sample_names <- c("Skin_1", "Skin_2", "Skin_3", "Skin_4")
 ```
 
 ## Ensemble annotation
@@ -48,6 +48,11 @@ ensembl_version = 109
 mito_genes <- get_mito_genes(organism, ensembl_version)
 ```
 # Loaading
+
+```{r}
+
+```
+
 ```{r}
 sobj_list = list()
 for (sample_name in sample_names) {
