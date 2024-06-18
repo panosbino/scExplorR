@@ -22,6 +22,7 @@ get_mito_genes <- function(organism, ensembl_version){
 
 }
 
+
 read_and_merge_sobjs <- function(data_rep, sample_names){
   sobj_list = list()
   for (sample_name in sample_names) {
@@ -54,7 +55,7 @@ load_and_annotate_recipe_1 <- function(data_rep, organism, ensembl_version){
 }
 
 
-
+#c("cpm","log","scran","asinh")
 normalize_all <- function(sc_input_object,method = "cpm") {
   if(class(sc_input_object) == "Seurat")
   {sce <- Seurat::as.SingleCellExperiment(sc_input_object)}
