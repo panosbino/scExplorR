@@ -1,0 +1,29 @@
+---
+title: "Building Preprocessing Pipeline"
+format: html
+---
+```{r}
+library(Seurat)
+```
+
+# 
+
+```{r}
+data_rep <- '../data/Skin'
+# sample_names <- list.files(data_rep)
+sample_names <- c("Skin_1", "Skin_2", "Skin_3", "Skin_4")
+
+
+```
+
+
+```{r}
+skin_1.data <- Seurat::Read10X(
+    data.dir = file.path(data_rep, sample_names[1], 'Solo.out', 'Gene', 'filtered')
+)
+
+skin_1 <- CreateSeuratObject(counts = skin_1.data,  project = "skin_1")
+
+str(skin_1)
+```
+
