@@ -7,14 +7,18 @@ library(Seurat)
 library(biomaRt)
 ```
 
+```{r}
+source("filtering_functions/Utils.R")
+```
 
 ```{r}
 # Functions
-import_into_sobj <- function(data_dir){
+import_into_sobj <- function(data_dir, project_name){
+
   sc_data <- Seurat::Read10X(
     data.dir = data_dir, gene.column = 1
   )
-  sobj <- Seurat::CreateSeuratObject(counts = sc_data)
+  sobj <- Seurat::CreateSeuratObject(counts = sc_data, project = project_name)
   rm(sc_data)
   return(sobj)
 }
@@ -31,77 +35,188 @@ get_mito_genes <- function(organism, ensembl_version){
   return(mito_genes)
   
 }
+
+read_and_merge_sobjs <- function(data_rep, sample_names){
+  sobj_list = list()
+  for (sample_name in sample_names) {
+    print(sample_name)
+    ## here would go things that are necessary to do in a sample independent manner, i.e. noise correction and doublet detection, which we are skipping for now
+    # Import data into seurat object
+    sobj_temp <- import_into_sobj(data_dir = file.path(data_rep, sample_name), project_name = sample_name)
+    
+    # Rename cell barcode names
+    sobj_temp <- Seurat::RenameCells(sobj_temp, new.names = paste0(Cells(sobj_temp), ".", sample_name))
+    
+    # Append to list
+    sobj_list[[sample_name]] <- sobj_temp
+  }
+  # Merge list
+  sobj <- merge(sobj_list[[1]], sobj_list[2:length(sobj_list)])
+  return(sobj)
+}
+
+
+load_and_annotate_recipe_1 <- function(data_rep, organism, ensembl_version){
+  sample_names <- list.files(data_rep)
+  
+  mito_genes <- get_mito_genes(organism, ensembl_version)
+  
+  sobj <- read_and_merge_sobjs(data_rep, sample_names)
+  sobj[["percent.mt"]] <- Seurat::PercentageFeatureSet(sobj, features = mito_genes$ensembl_gene_id)
+  
+  return(sobj)
+}
+
+
 ```
 
 ```{r}
+list.files(data_rep)
+```
+
+```{r}
+data_type_options <- c('10X', 'rds')
+input_type <-'10X'
+
 data_rep <- './sample_data/'
 sample_names <- list.files(data_rep)
-#sample_names <- c("Skin_1", "Skin_2", "Skin_3", "Skin_4")
+
 ```
 
 ## Ensemble annotation
-### Mito Genes
+
 ```{r}
 organism = "mfascicularis"
 ensembl_version = 109
 
-mito_genes <- get_mito_genes(organism, ensembl_version)
+
+
 ```
 # Loaading
 
 ```{r}
+sobj <- load_and_annotate_recipe_1(data_rep, organism, ensembl_version)
+
+show_QC_plots(sobj)
+
+sobj <- subset(sobj, subset = nFeature_RNA > 400 & nFeature_RNA < 4500 & percent.mt < 25)
+
+```
+
+
+```{r}
+show_QC_plots <- function(sobj){
+  require(patchwork)
+  top <- VlnPlot(sobj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+  bottom_1 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "percent.mt")
+  bottom_2 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+  
+  return(top / (bottom_1 + bottom_2))
+  
+}
+VlnPlot(sobj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
 
 ```
 
 ```{r}
-sobj_list = list()
-for (sample_name in sample_names) {
-  print(sample_name)
-  ## here would go things that are necessary to do in a sample independent manner, i.e. noise correction and doublet detection, which we are skipping for now
-  # Import data into seurat object
-  sobj_temp <- import_into_sobj(data_dir =file.path(data_rep, sample_name))
-  
-  # Rename cell barcode names
-  sobj_temp <- Seurat::RenameCells(sobj_temp, new.names = paste0(Cells(sobj_temp), ".", sample_name))
-  
-  # Append to list
-  sobj_list[[sample_name ]] <- sobj_temp
-}
+library(patchwork)
+top <- VlnPlot(sobj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
 
-# Merge list
-sobj <- merge(sobj_list[[1]], sobj_list[2:length(sobj_list)])
+bottom_1 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "percent.mt")
+bottom_2 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 
-# Calculate Percent mito
-sobj[["percent.mt"]] <- PercentageFeatureSet(sobj, features = mito_genes$ensembl_gene_id)
+top / (bottom_1 + bottom_2)
 ```
+
+
+
+```{r}
+sobj <- subset(sobj, subset = nFeature_RNA > 400 & nFeature_RNA < 4500 & percent.mt < 25)
+
+```
+
+```{r}
+sobj <- NormalizeData(sobj, normalization.method = "LogNormalize", scale.factor = 10000)
+
+```
+```{r}
+sobj <- FindVariableFeatures(sobj, selection.method = "vst", nfeatures = 2000)
+
+```
+
+```{r}
+sobj <- ScaleData(sobj)
+sobj <- RunPCA(sobj, features = VariableFeatures(object = sobj))
+
+```
+```{r}
+DimPlot(sobj, reduction = "pca") + NoLegend()
+
+```
+```{r}
+sobj <- FindNeighbors(sobj, dims = 1:10)
+sobj <- FindClusters(sobj, resolution = 1)
+```
+
+```{r}
+sobj <- RunUMAP(sobj, dims = 1:10)
+
+```
+
+```{r}
+DimPlot(sobj, reduction = "umap")
+
+```
+
+
+```{r}
+sobj <- subset(sobj, subset = nFeature_RNA > 400 & nFeature_RNA < 4500 & percent.mt < 25)
+
+FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "percent.mt")
+
+saveRDS(sobj, file = 'processed_skin.rds')
+
+GetAssayData(sobj, layer = 'RNA')
+
+str(sobj@assays$RNA)
+
+sobj[['RNA']]$counts
+merged_sobj[['RNA']]$counts
+
+
+merged_sobj <- JoinLayers(sobj)
+
+
+merged_sobj
+table(Idents(merged_sobj))
+
+```
+
+
+```{r}
+
+```
+
 
 ```{r}
 library(purrr)
 
-
-sample_directories <- map(sample_names, \(sample_name) file.path(data_rep, sample_name, 'Solo.out', 'Gene', 'filtered')) |> 
-  setNames(sample_names)
-
-sobj_list <- map(sample_directories, import_into_sobj)
+sample_names <- setNames(sample_names, sample_names)
+sample_directories <- map(sample_names, \(sample_name) file.path(data_rep, sample_name)) 
 
 
-
-map(sample_names, \(x) )
-
-```
+sobj_list <- map(sample_directories, \(sample_dir) import_into_sobj(sample_dir) )
 
 
-```{r}
-VlnPlot(sobj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+sobj <- merge(sobj_list[[1]], sobj_list[2:length(sobj_list)])
 
-plot1 <- FeatureScatter(skin_1, feature1 = "nCount_RNA", feature2 = "percent.mt")
-plot2 <- FeatureScatter(skin_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
-plot1 + plot2
-
-pbmc <- subset(pbmc, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 25)
-
+Cells(sobj)
+table(sobj$orig.ident)
 
 ```
+
+
 
 
 
