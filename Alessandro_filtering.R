@@ -119,7 +119,9 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
-
+  rv <- reactiveValues(
+    dim_reduced_seurat_obj = NULL
+  )
 
 
 #create reactuve value object
