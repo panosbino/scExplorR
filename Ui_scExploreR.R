@@ -40,31 +40,31 @@ ui <- fluidPage(
                  fluidRow(
                    column(
                      12,
-                     shinyDirButton("directory_filt", "Folder select", "Please select a folder"),
-                     verbatimTextOutput("filepaths_filt"),
+                     shinyDirButton("directory", "Folder select", "Please select a folder"),
                      br(), br(),
                      selectizeInput("ensembl", "Ensembl version", choices = get_possible_ensembl_versions()),
                      selectizeInput("organism", "Organism", choices = get_possible_organisms(109)),
-                     sliderInput("range1", "Genes filtering range", min = 0, max = 100, value = c(0, 100)),
-                     sliderInput("range2", "Counts filtering range", min = 0, max = 100, value = c(0, 100)),
-                     sliderInput("range3", "Mitochondria filtering range", min = 0, max = 100, value = c(0, 100)),
                      actionBttn("btn_filter_go", "Explode!", style = "jelly", color = "danger"),
                      br(), br(),
                      plotOutput("plot_output"),
+                     br(), br(),
+                     numericInput('gene_max', 'Filter gene max', 3, min = 0, max = 100000),
+                     numericInput('gene_min', 'Filter gene min', 3, min = 0, max = 100000),
+                     numericInput('count_max', 'Filter UMI max', 3, min = 0, max = 100000),
+                     numericInput('count_min', 'Filter UMI min', 3, min = 0, max = 100000),
+                     numericInput('mt_max', 'Filter mito max', 3, min = 0, max = 100000),
+                     br(), br(),
+                     actionBttn("btn_filter_go_again", "Explode...again!", style = "jelly", color = "danger"),
+                     plotOutput("plot_output_again"),
                      downloadBttn("button_download_plot", "Download Plot", style = "jelly", color = "success"),
                      br(), br(),
                      downloadBttn("button_download_data", "Download filtered data", style = "jelly", color = "success")
                    )
                  ),
-                 fluidRow(
-                   column(
-                     12,
-                     verbatimTextOutput("file_output")
-                   )
-                 )
                )
       ),
-      tabPanel("Normalization",
+
+      tabPanel("Normalisation",
                div(
                  style = "padding: 20px; border: 1px solid #ddd; border-radius: 10px;",
                  fluidRow(
@@ -72,6 +72,7 @@ ui <- fluidPage(
                      12,
                      fileInput("file_input_filtered", "File Input:", buttonLabel = "Browse...", placeholder = "No file selected"),
                      selectInput("method", "Method", choices = c("cpm", "log", "scran", "asinh", "log_geom")),
+
                      actionBttn("btn_norm_go", "Explode!", style = "jelly", color = "danger"),
                      br(), br(),
                      downloadBttn("button_download_norm", "Download", style = "jelly", color = "success")
@@ -83,6 +84,7 @@ ui <- fluidPage(
                      verbatimTextOutput("text_output_three"),
                      plotlyOutput("plot_output_PCA"),
                      plotOutput("plot_output_UMAP")
+
                    )
                  )
                )
@@ -107,51 +109,72 @@ ui <- fluidPage(
       )
     )
   )
+
+
 )
 
+
+
+
+
+
+
+############################
+
 server <- function(input, output, session) {
+
+
+
+
+#create reactuve value object
+  reactive_sobj <- reactiveValues(sobj = NULL)
+
+
   volumes <- c(Home = fs::path_home(),
                "R Installation" = R.home(),
                getVolumes()())
+
 
   # Reactive values to store objects
   rv <- reactiveValues(
     dim_reduced_seurat_obj = NULL
   )
-
-  # Filtering tab directory chooser
   shinyDirChoose(input,
-                 "directory_filt",
+                 "directory",
                  roots = volumes,
                  session = session,
                  restrictions = system.file(package = "base"),
                  allowDirCreate = FALSE)
 
-  getdata_filt <- reactive({
-    req(input$directory_filt)
-    parseDirPath(volumes, input$directory_filt)
+
+  #extract directory path of the submitted folder
+  getdata <- reactive({
+    req(input$directory)
+    parseDirPath(volumes, input$directory)
   })
 
-  output$filepaths_filt <- renderPrint({
-    if (is.null(input$directory_filt)) {
-      "No directory selected"
-    } else {
-      getdata_filt()
-    }
-  })
 
+
+
+#observe event for plotting data
   observeEvent(input$btn_filter_go, {
-    req(input$directory_filt, input$ensembl, input$organism)
+    req(input$directory, input$ensembl, input$organism)
 
     data_rep <- getdata_filt()
     ensembl_version <- input$ensembl
     organism <- input$organism
 
-    # Perform filtering or other operations here
-    sobj <- load_and_annotate_recipe_1(data_rep, organism, ensembl_version)
 
-    output$plot_output <- renderPlot({
-      show_QC_plots(sobj)
+      sobj <- load_and_annotate_recipe_1(data_rep, organism, ensembl_version)
+
+      reactive_sobj$sobj <- sobj
+
+      output$plot_output <- renderPlot({
+        show_QC_plots(reactive_sobj$sobj)
+
+
+        })
+
     })
   })
 
@@ -159,8 +182,47 @@ server <- function(input, output, session) {
     req(input$file_input_filtered)
     req(input$method)
 
-    print(input$file_input_filtered$name)
-    print(input$method)
+  observeEvent(input$btn_filter_go_again, {
+    req(reactive_sobj$sobj, input$gene_min, input$gene_max, input$mt_max, input$count_max, input$count_min)
+
+
+
+
+    output$plot_output_again <- renderPlot({
+      preview_filtered_sobj(reactive_sobj$sobj, min_genes = input$gene_min, max_genes = input$gene_max, max_pct_mito = input$mt_max ,
+                            max_UMIs = input$count_max, min_UMIs = input$count_min)
+
+
+    })
+  })
+
+
+
+  output$button_download_plot <- downloadHandler(
+    filename = function() {
+      paste("QC_plot", Sys.Date(), ".png", sep = "")
+    },
+    content = function(file) {
+      ggsave(file, plot = last_plot())
+    }
+  )
+
+  output$button_download_data <- downloadHandler(
+    filename = function() {
+      "processed_data.rds"
+    },
+    content = function(file) {
+      processed_data <- commit_filtered_sobj(
+        reactive_sobj$sobj,
+        min_genes = input$gene_min,
+        max_genes = input$gene_max,
+        max_pct_mito = input$mt_max,
+        max_UMIs = input$count_max,
+        min_UMIs = input$count_min
+      )
+      saveRDS(processed_data, file)
+    }
+  )
 
     # Read the uploaded file
     sc_filtered_object <- readRDS(input$file_input_filtered$datapath)
@@ -200,6 +262,7 @@ server <- function(input, output, session) {
       clustering_res$UMAP
     })
   })
+
 }
 
 shinyApp(ui, server)

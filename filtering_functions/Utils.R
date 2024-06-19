@@ -84,31 +84,38 @@ show_QC_plots <- function(sobj){
   return(top / (bottom_left + bottom_right))
 
 }
-
 filter_sobj <- function(sobj, min_genes = NULL, max_genes = NULL,
                         min_UMIs = NULL, max_UMIs = NULL,
-                        min_pct_mito = NULL,
-                        max_pct_mito = NULL){
+                        min_pct_mito = NULL, max_pct_mito = NULL) {
   require(Seurat)
+  require(SeuratObject)
+
+  # Create logical vector for subsetting
+  keep <- rep(TRUE, ncol(sobj))
+
   if (!is.null(min_genes)) {
-    sobj <- subset(sobj, subset = nFeature_RNA >= min_genes)
+    keep <- keep & sobj$nFeature_RNA >= as.double(min_genes)
   }
   if (!is.null(max_genes)) {
-    sobj <- subset(sobj, subset = nFeature_RNA <= max_genes)
+    keep <- keep & sobj$nFeature_RNA <= as.double(max_genes)
   }
   if (!is.null(min_UMIs)) {
-    sobj <- subset(sobj, subset = nCount_RNA >= min_UMIs)
+    keep <- keep & sobj$nCount_RNA >= as.double(min_UMIs)
   }
   if (!is.null(max_UMIs)) {
-    sobj <- subset(sobj, subset = nCount_RNA >= max_UMIs)
-  }
-  if (!is.null(max_pct_mito)) {
-    sobj <- subset(sobj, subset = percent.mt <= max_pct_mito)
+    keep <- keep & sobj$nCount_RNA <= as.double(max_UMIs)
   }
   if (!is.null(min_pct_mito)) {
-    sobj <- subset(sobj, subset = percent.mt >= min_pct_mito)
+    keep <- keep & sobj$percent.mt >= as.double(min_pct_mito)
   }
-  return (sobj)
+  if (!is.null(max_pct_mito)) {
+    keep <- keep & sobj$percent.mt <= as.double(max_pct_mito)
+  }
+
+  # Subset the Seurat object using logical vector
+  sobj <- sobj[, keep]
+
+  return(sobj)
 }
 
 preview_filtered_sobj <- function(sobj, min_genes = NULL, max_genes = NULL,
@@ -148,7 +155,7 @@ plot_QC_scatter_left <- function(sobj){
   bomb_palette <- get_bomb_palette()
   n_samples <- plot_data$orig.ident |> unique() |> length()
 
-  scatter_size = 1200/dim(plot_data)[1]
+  scatter_size = 1200/dim(sobj)[1]
 
   pl <- plot_data |>
     ggplot(aes(x = nGenes, y = pct_mito, color = orig.ident),) +
@@ -166,7 +173,7 @@ plot_QC_scatter_right<- function(sobj){
   bomb_palette <- get_bomb_palette()
   n_samples <- plot_data$orig.ident |> unique() |> length()
 
-  scatter_size = 1200/dim(plot_data)[1]
+  scatter_size = 1200/dim(sobj)[1]
 
   pl <- plot_data |>
     ggplot(aes(x = nGenes, y = nUMIs, color = orig.ident)) +
@@ -195,7 +202,6 @@ tidyd_qcp_violin <- function(sobj) {
 
   return(plot_data)
 }
-
 plot_QC_violin <- function(sobj){
   require(patchwork)
   require(ggplot2)
@@ -203,24 +209,34 @@ plot_QC_violin <- function(sobj){
 
   plot_data <- tidyd_qcp_violin(sobj)
   n_samples <- plot_data$orig.ident |> unique() |> length()
+  scatter_size = 1200/dim(sobj)[1]
 
   nUMI_violin <- plot_data |>
     dplyr::filter(key == 'nUMIs') |>
     ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
-    geom_violin() + scale_fill_manual(values =
-                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    geom_jitter(color = "gray", width = 0.45, size = scatter_size, alpha = 0.5 ) +
+    geom_violin() +
+    scale_fill_manual(values = bomb_palette(n_samples)) +
+    facet_grid(~ key) +
+    theme_classic() +
     theme(legend.position = "none", axis.title = element_blank())
+
   nGenes_violin <- plot_data |>
     dplyr::filter(key == 'nGenes') |>
     ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
-    geom_violin() + scale_fill_manual(values =
-                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    geom_jitter(color = "gray", width = 0.45, size = scatter_size, alpha = 0.5) +
+    geom_violin() +
+    scale_fill_manual(values = bomb_palette(n_samples)) +
+    facet_grid(~ key) +
+    theme_classic() +
     theme(legend.position = "none", axis.title = element_blank())
+
   pct_mito_violin <- plot_data |>
     dplyr::filter(key == 'pct_mito') |>
     ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
-    geom_violin() + scale_fill_manual(values =
-                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    geom_jitter(color = "gray", width = 0.45, size = scatter_size, alpha = 0.5) +
+    geom_violin() +
+    scale_fill_manual(values = bomb_palette(n_samples)) + facet_grid(~ key) + theme_classic() +
     theme(legend.position = "none", axis.title = element_blank())
 
   return(nUMI_violin + nGenes_violin + pct_mito_violin)

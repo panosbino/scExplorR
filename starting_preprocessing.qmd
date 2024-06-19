@@ -2,15 +2,54 @@
 title: "Building Preprocessing Pipeline"
 format: html
 ---
+
 ```{r}
-library(Seurat)
-library(biomaRt)
 ```
 
 ```{r}
 source("filtering_functions/Utils.R")
 ```
+## Editing qc plots
+```{r}
+data_rep <- './sample_data/'
+organism = "mfascicularis_gene_ensembl"
+ensembl_version = 109
 
+sobj <- load_and_annotate_recipe_1(data_rep, organism, ensembl_version)
+show_QC_plots(sobj)
+```
+
+```{r}
+preview_filtered_sobj(sobj, min_genes = 400, max_genes = 3000, max_pct_mito = 25)
+
+```
+
+```{r}
+sobj <- commit_filtered_sobj(sobj, min_genes = 400, max_genes = 3000, max_pct_mito = 25)
+
+```
+
+# Loaading
+
+```{r}
+data_rep <- './sample_data'
+organism = "mfascicularis_gene_ensembl"
+ensembl_version = 109
+
+sobj <- load_and_annotate_recipe_1(data_rep, organism, ensembl_version)
+
+show_QC_plots(sobj)
+
+
+preview_filtered_sobj(sobj, min_genes = 400, max_genes = 3000, max_pct_mito = 25)
+
+show_QC_plots(preview_sobj)
+
+sobj <- commit_filtered_sobj(sobj, min_genes = 400, max_genes = 3000, max_pct_mito = 25)
+
+export_sobj (sobj, path = './test_skin_2.rds')
+
+```
 ```{r}
 data_type_options <- c('10X', 'rds')
 input_type <-'10X'
@@ -24,31 +63,73 @@ if ("matrix.mtx.gz" %in% sample_names){
   
 ```
 
-## Ensemble annotation
+```{r}
+preview_filtered_sobj <- function(sobj, min_genes = NULL, max_genes = NULL, 
+                                  min_UMIs = NULL, max_UMIs = NULL, 
+                                  max_pct_mito = NULL) {
+  # returns a plot with showing QC plots of filtered data
+  sobj <- filter_data(sobj, min_genes = NULL, max_genes = NULL, 
+                                  min_UMIs = NULL, max_UMIs = NULL, 
+                                  max_pct_mito = NULL)
+  return(show_QC_plots(sobj))
+}
+
+
+filter_data
+
+
+!is.null(min_genes)
+  
+  ?parese
+sobj <- subset(sobj, subset = nFeature_RNA > 400 & nFeature_RNA < 4500 & percent.mt < 25)
+
+dirname(data_rep)
+list.files(dirname(data_rep)
+)
+```
 
 ```{r}
-possible_ensembl_versions <- get_possible_ensembl_versions()
-possible_organisms <- get_possible_organisms(110)
 
-
+data_rep <- './sample_data/Skin_2/'
 organism = "mfascicularis_gene_ensembl"
 ensembl_version = 109
 
 
+sample_names <- list.files(data_rep)
+
+if ("matrix.mtx.gz" %in% sample_names){
+  sample_name <- c(basename(data_rep))
+  data_rep <- dirname(data_rep)
+  
+  sobj <- import_into_sobj(data_dir = file.path(data_rep, sample_name), project_name = sample_name)
+
+}
+
+  mito_genes <- get_mito_genes(organism, ensembl_version)
+
+  # read and merge sobj
+sobj_list = list()
+for (sample_name in sample_names) {
+  print(sample_name)
+#  ## here would go things that are necessary to do in a sample independent manner, i.e. noise correction and doublet detection, which we are skipping for now
+#  # Import data into seurat object
+  sobj_temp <- import_into_sobj(data_dir = file.path(data_rep, sample_name), project_name = sample_name)
+#
+#  # Rename cell barcode names
+  sobj_temp <- Seurat::RenameCells(sobj_temp, new.names = paste0(SeuratObject::Cells(sobj_temp), ".", sample_name))
+#
+#  # Append to list
+  sobj_list[[sample_name]] <- sobj_temp
+}
+# Merge list
+sobj <- merge(sobj_list[[1]], sobj_list[2:length(sobj_list)])
+sobj <- SeuratObject::JoinLayers(sobj)  
+  
+  sobj[["percent.mt"]] <- Seurat::PercentageFeatureSet(sobj, features = mito_genes$ensembl_gene_id)
+
+  return(sobj)
+}
 ```
-# Loaading
-
-```{r}
-sobj <- load_and_annotate_recipe_1(data_rep, organism, ensembl_version)
-
-show_QC_plots(sobj)
-
-
-filter_data
-sobj <- subset(sobj, subset = nFeature_RNA > 400 & nFeature_RNA < 4500 & percent.mt < 25)
-
-```
-
 
 ```{r}
 library(patchwork)
