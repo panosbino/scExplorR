@@ -164,3 +164,12 @@ normalize_all <- function(sc_input_object,method = "cpm") {
 }
 
 
+# nfeatures, number of PCs and dims can all be user defined input variables if we want to do that.
+dim_reduction <- function(normalized_seurat_obj){
+  normalized_seurat_obj <- FindVariableFeatures(normalized_seurat_obj, selection.method = "vst", nfeatures = 2000)
+  all.genes <- rownames(normalized_seurat_obj)
+  normalized_seurat_obj <- ScaleData(normalized_seurat_obj, features = all.genes)
+  dim_reduced_seurat_obj <- RunPCA(normalized_seurat_obj, features = VariableFeatures(object = normalized_seurat_obj))
+  dim_reduced_seurat_obj <- RunUMAP(dim_reduced_seurat_obj, dims = 1:10)
+  return(dim_reduced_seurat_obj)
+}
