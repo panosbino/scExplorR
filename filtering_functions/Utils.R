@@ -1,26 +1,27 @@
 get_possible_ensembl_versions <- function(){
   require(biomaRt)
-  return(listEnsemblArchives()[['version']])
+  return(biomaRt::listEnsemblArchives()[['version']])
 }
 
 get_possible_organisms <- function(ensembl_version){
   require(biomaRt)
-  ensembl <- useEnsembl(biomart = "genes", version = ensembl_version)
-  return(listDatasets(ensembl)[["dataset"]])
+  ensembl <- biomaRt::useEnsembl(biomart = "genes", version = ensembl_version)
+  return(biomaRt::listDatasets(ensembl)[["dataset"]])
 }
 
 import_into_sobj <- function(data_dir, project_name){
-
+  require(Seurat)
   sc_data <- Seurat::Read10X(
     data.dir = data_dir, gene.column = 1
   )
-  sobj <- Seurat::CreateSeuratObject(counts = sc_data, project = project_name)
+  sobj <- SeuratObject::CreateSeuratObject(counts = sc_data, project = project_name)
   rm(sc_data)
   return(sobj)
 }
 
 get_mito_genes <- function(organism, ensembl_version){
-  ensembl <- useEnsembl(biomart = 'genes',
+  require(biomaRt)
+  ensembl <- biomaRt::useEnsembl(biomart = 'genes',
                         dataset = organism,
                         version = ensembl_version)
 
@@ -34,6 +35,7 @@ get_mito_genes <- function(organism, ensembl_version){
 
 
 read_and_merge_sobjs <- function(data_rep, sample_names){
+  require(Seurat)
   sobj_list = list()
   for (sample_name in sample_names) {
     print(sample_name)
@@ -42,14 +44,14 @@ read_and_merge_sobjs <- function(data_rep, sample_names){
     sobj_temp <- import_into_sobj(data_dir = file.path(data_rep, sample_name), project_name = sample_name)
 
     # Rename cell barcode names
-    sobj_temp <- Seurat::RenameCells(sobj_temp, new.names = paste0(Cells(sobj_temp), ".", sample_name))
+    sobj_temp <- Seurat::RenameCells(sobj_temp, new.names = paste0(SeuratObject::Cells(sobj_temp), ".", sample_name))
 
     # Append to list
     sobj_list[[sample_name]] <- sobj_temp
   }
   # Merge list
   sobj <- merge(sobj_list[[1]], sobj_list[2:length(sobj_list)])
-  sobj <- JoinLayers(sobj)
+  sobj <- SeuratObject::JoinLayers(sobj)
 
   return(sobj)
 }
@@ -57,6 +59,11 @@ read_and_merge_sobjs <- function(data_rep, sample_names){
 
 load_and_annotate_recipe_1 <- function(data_rep, organism, ensembl_version){
   sample_names <- list.files(data_rep)
+
+  if ("matrix.mtx.gz" %in% sample_names){
+    sample_names <- c(basename(data_rep))
+  }
+
   mito_genes <- get_mito_genes(organism, ensembl_version)
   sobj <- read_and_merge_sobjs(data_rep, sample_names)
   sobj[["percent.mt"]] <- Seurat::PercentageFeatureSet(sobj, features = mito_genes$ensembl_gene_id)
