@@ -315,7 +315,7 @@ normalize_and_plot_main <- function(path_to_filtered_seurat_obj, normalization_m
   normalized_seurat_object <- normalize_all(sc_input_object = sc_filtered_object, method = normalization_method)
   dim_reduced_seurat_obj <- dim_reduction(normalized_seurat_object)
   PCA_plot <- plot_PCA(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
-  UMAP_plot <- plot_umap(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
+  UMAP_plot <- plot_UMAP(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
   return(list(PCA_plot,UMAP_plot,dim_reduced_seurat_obj))
 }
 
