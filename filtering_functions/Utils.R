@@ -233,5 +233,28 @@ normalize_and_plot_main <- function(path_to_filtered_seurat_obj, normalization_m
   return(list(PCA_plot,UMAP_plot,dim_reduced_seurat_obj))
 }
 
+# This returns a list of 2 objects
+# The first is the clustered UMAP plot
+# The second is the the Seurat object with the clustering info
+# Would need to check if the number of clusters shown in the plot is correct when you change resolution
+cluster <- function(path_to_dim_reduced_seurat_obj, clustering_resolution = 0.3){
+  dim_reduced_seurat_obj <- readRDS(path_to_dim_reduced_seurat_obj)
+  clustered_seurat_obj <- FindNeighbors(dim_reduced_seurat_obj, dims = 1:10)
+  clustered_seurat_obj <- FindClusters(clustered_seurat_obj, resolution = clustering_resolution)
+  clustering_plot <- DimPlot(obj, reduction = "umap", group.by = paste0("RNA_snn_res.",clustering_resolution)) +
+    theme_minimal() +
+    xlab("UMAP 1") +
+    ylab("UMAP 2") +
+    ggtitle(paste0("Clustering resolution = ", clustering_resolution,"  |  ",obj@meta.data$seurat_clusters %>% unique() %>% length()," clusters found")) +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_text(size = 20),
+          #legend.text = element_text(size = 18),
+          legend.position = "none",
+          plot.title = element_text(size = 20, hjust = 0.5),
+    )
+  return(list(clustering_plot,clustered_seurat_obj))
+}
 
 
