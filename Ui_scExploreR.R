@@ -43,40 +43,34 @@ ui <- fluidPage(
                  fluidRow(
                    column(
                      12,
-                     shinyDirButton("directory_filt", "Folder select", "Please select a folder"),
-                     verbatimTextOutput("filepaths_filt"),
+                     shinyDirButton("directory", "Folder select", "Please select a folder"),
                      br(), br(),
                      selectizeInput("ensembl", "Ensembl version", choices = get_possible_ensembl_versions()),
                      selectizeInput("organism", "Organism", choices = get_possible_organisms(109)),
-                     sliderInput("range", "Genes filtering range",min = 0, max = 100, value = c(0,100)),
-                     sliderInput("range", "Counts filtering range",min = 0, max = 100, value = c(0,100)),
-                     sliderInput("range", "Mitocondria filtering range",min = 0, max = 100, value = c(0,100)),
                      actionBttn("btn_filter_go", "Explode!", style = "jelly", color = "danger"),
-                     #progressBar(id = "progress"),
                      br(), br(),
+                     numericInput('gene_max', 'Filter gene max', 3, min = 0, max = 100000),
+                     numericInput('gene_min', 'Filter hene min', 3, min = 0, max = 100000),
+                     numericInput('count_max', 'Filter count max', 3, min = 0, max = 100000),
+                     numericInput('count_min', 'Filter count min', 3, min = 0, max = 100000),
                      plotOutput("plot_output"),
+                     br(), br(),
+                     actionBttn("btn_filter_go", "Explode...again!", style = "jelly", color = "danger"),
                      downloadBttn("button_download_plot", "Download Plot", style = "jelly", color = "success"),
                      br(), br(),
                      downloadBttn("button_download_data", "Download filtered data", style = "jelly", color = "success")
                    )
                  ),
-                 fluidRow(
-                   column(
-                     12,
-                     verbatimTextOutput("file_output")
-                   )
-                 )
                )
       ),
-
       tabPanel("Normalisation",
                div(
                  style = "padding: 20px; border: 1px solid #ddd; border-radius: 10px;",
                  fluidRow(
                    column(
                      12,
-                     shinyDirButton("directory_norm", "Folder select", "Please select a folder"),
-                     verbatimTextOutput("filepaths_norm"),
+                     #shinyDirButton("directory", "Folder select", "Please select a folder"),
+                     #verbatimTextOutput("filepaths"),
                      br(), br(),
                      selectInput("method", "Method", choices = c("Cpm", "Log", "Scran", "Asinh", "Log_geom")),
                      actionBttn("btn_norm_go", "Explode!", style = "jelly", color = "danger"),
@@ -87,7 +81,7 @@ ui <- fluidPage(
                  fluidRow(
                    column(
                      12,
-                     verbatimTextOutput("text_output_norm"),
+                     verbatimTextOutput("text_output"),
                      plotOutput("plot_output_norm")
                    )
                  )
@@ -116,7 +110,10 @@ ui <- fluidPage(
       )
     )
   )
+
+
 )
+
 
 
 
@@ -130,29 +127,23 @@ server <- function(input, output, session) {
                getVolumes()())
 
   shinyDirChoose(input,
-                 "directory_filt",
+                 "directory",
                  roots = volumes,
                  session = session,
                  restrictions = system.file(package = "base"),
                  allowDirCreate = FALSE)
 
   getdata <- reactive({
-    req(input$input$directory_filt)
-    parseDirPath(volumes, input$directory_filt)
+    req(input$directory)
+    parseDirPath(volumes, input$directory)
   })
 
-  output$filepaths_filt <- renderPrint({
-    if (is.null(input$directory_filt)) {
-      "No directory selected"
-    } else {
-      getdata()
-    }
-  })
+
 
 
 
   observeEvent(input$btn_filter_go, {
-    req(input$directory_filt, input$ensembl, input$organism)
+    req(input$directory, input$ensembl, input$organism)
 
     data_rep <- getdata()
     ensembl_version <- input$ensembl
@@ -165,6 +156,23 @@ server <- function(input, output, session) {
         show_QC_plots(sobj)
       })
     })
+
+
+  observeEvent(input$btn_re_filter_go, {
+    req(input$directory, )
+
+    data_rep <- getdata()
+    ensembl_version <- input$ensembl
+    organism <- input$organism
+
+    # Perform filtering number 2
+    preview_filtered_sobj(sobj, min_genes = 400, max_genes = 3000, max_pct_mito = 25)
+
+    output$plot_output <- renderPlot({
+      show_QC_plots(preview_filtered_sobj)
+    })
+  })
+
 
 
   output$button_download_plot <- downloadHandler(
@@ -188,45 +196,7 @@ server <- function(input, output, session) {
 
 
 
-  #Normalization
-  volumes <- c(Home = fs::path_home(),
-               "R Installation" = R.home(),
-               getVolumes()())
-  shinyDirChoose(input, "directory",
-                 roots = volumes,
-                 session = session,
-                 restrictions = system.file(package = "base"),
-                 allowDirCreate = FALSE)
 
-
-  output$filepaths_norm <- renderPrint({
-    if (is.null(input$directory)) {
-      "No directory selected"
-    } else {
-      getdata()
-    }
-  })
-
-
-  getdata <- reactive({
-    req(input$directory_norm)
-    parseDirPath(volumes, input$directory_norm)
-  })
-
-  observeEvent(input$btn_filter_go, {
-    req(input$directory_norm, input$method)
-
-    path_to_filtered_seurat_obj <- getdata()
-    normalization_method <- input$method
-
-    # Perform Normalization or other operations here
-    normalize_and_plot_main(path_to_filtered_seurat_obj, normalization_method = "cpm")
-
-    output$plot_output <- renderPlot({
-      plot_umap
-    })
-
-  })
 
 
 }
