@@ -252,6 +252,7 @@ plot_QC_violin <- function(sobj){
 
 #c("cpm","log","scran","asinh")
 normalize_all <- function(sc_input_object,method = "cpm") {
+  require(scuttle)
   if(class(sc_input_object) == "Seurat")
   {sce <- Seurat::as.SingleCellExperiment(sc_input_object)}
   else if (class(sc_input_object) == "SingleCellExperiment")
@@ -292,12 +293,15 @@ dim_reduction <- function(normalized_seurat_obj){
 
 # Needs to be generalized for different number of samples
 plot_UMAP <- function(dim_reduced_seurat_obj) {
-  UMAPs <- dim_reduced_seurat_obj@reductions$umap@cell.embeddings %>% cbind(dim_reduced_seurat_obj$orig.ident) %>% as.data.frame()
-  UMAPs$umap_1 <- UMAPs$umap_1 %>% as.numeric()
-  UMAPs$umap_2 <- UMAPs$umap_2 %>% as.numeric()
+  require(stringr)
+  bomb_palette <- get_bomb_palette()
+  n_samples <- dim_reduced_seurat_obj$orig.ident |> unique() |> length()
+  UMAPs <- dim_reduced_seurat_obj@reductions$umap@cell.embeddings  |>  cbind(dim_reduced_seurat_obj$orig.ident) |>  as.data.frame()
+  UMAPs$umap_1 <- UMAPs$umap_1 |>  as.numeric()
+  UMAPs$umap_2 <- UMAPs$umap_2 |> as.numeric()
   colnames(UMAPs)[3] <- "Sample"
-  UMAPs$Sample <- ifelse(str_detect(UMAPs$Sample,pattern = "_"),
-                         UMAPs$Sample %>% str_replace(pattern = "_", replacement = " "),
+  UMAPs$Sample <- ifelse(stringr::str_detect(UMAPs$Sample,pattern = "_"),
+                         UMAPs$Sample |> str_replace(pattern = "_", replacement = " "),
                          UMAPs$Sample)
   ggplot() + geom_point(data = UMAPs, mapping = aes(x = umap_1, y = umap_2, color = Sample), size =0.5) +
     theme_minimal() +
@@ -313,17 +317,17 @@ plot_UMAP <- function(dim_reduced_seurat_obj) {
           strip.text = element_blank()) +
     facet_wrap(~Sample, nrow = 2,) +
     guides(colour = guide_legend(override.aes = list(size=10))) +
-    scale_color_manual(values = c("#cb353d", "#ed6240", "#f9b64e", "#6a4a57"))
+    scale_color_manual(values = bomb_palette(n_samples))
 }
 
 # Needs further beautifying, will do later
 plot_PCA <- function(dim_reduced_seurat_obj){
-  PCAs <- dim_reduced_seurat_obj@reductions$pca@cell.embeddings[,1:3] %>%
-    as.data.frame() %>%
+  PCAs <- dim_reduced_seurat_obj@reductions$pca@cell.embeddings[,1:3]  |>
+    as.data.frame()  |>
     cbind(dim_reduced_seurat_obj$orig.ident)
   colnames(PCAs)[4] <- "Sample"
-  PCAs$Sample <- ifelse(str_detect(PCAs$Sample,pattern = "_"),
-                        PCAs$Sample %>% str_replace(pattern = "_", replacement = " "),
+  PCAs$Sample <- ifelse(stringr::str_detect(PCAs$Sample,pattern = "_"),
+                        PCAs$Sample  |>  str_replace(pattern = "_", replacement = " "),
                         PCAs$Sample)
   plotly::plot_ly(data = PCAs, x=~PC_1, y=~PC_2, z=~PC_3, type="scatter3d", mode = "markers" ,colors= c("#6a4a57"), size = 0.5)
 }
@@ -355,7 +359,7 @@ cluster <- function(path_to_dim_reduced_seurat_obj, clustering_resolution = 0.3)
     theme_minimal() +
     xlab("UMAP 1") +
     ylab("UMAP 2") +
-    ggtitle(paste0("Clustering resolution = ", clustering_resolution,"  |  ",obj@meta.data$seurat_clusters %>% unique() %>% length()," clusters found")) +
+    ggtitle(paste0("Clustering resolution = ", clustering_resolution,"  |  ",obj@meta.data$seurat_clusters |> unique() |> length()," clusters found")) +
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           axis.text = element_blank(),
