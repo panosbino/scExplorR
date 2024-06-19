@@ -148,7 +148,7 @@ plot_QC_scatter_left <- function(sobj){
   bomb_palette <- get_bomb_palette()
   n_samples <- plot_data$orig.ident |> unique() |> length()
 
-  scatter_size = 1200/dim(plot_data)[1]
+  scatter_size = 1200/dim(sobj)[1]
 
   pl <- plot_data |>
     ggplot(aes(x = nGenes, y = pct_mito, color = orig.ident),) +
@@ -166,7 +166,7 @@ plot_QC_scatter_right<- function(sobj){
   bomb_palette <- get_bomb_palette()
   n_samples <- plot_data$orig.ident |> unique() |> length()
 
-  scatter_size = 1200/dim(plot_data)[1]
+  scatter_size = 1200/dim(sobj)[1]
 
   pl <- plot_data |>
     ggplot(aes(x = nGenes, y = nUMIs, color = orig.ident)) +
@@ -195,7 +195,6 @@ tidyd_qcp_violin <- function(sobj) {
 
   return(plot_data)
 }
-
 plot_QC_violin <- function(sobj){
   require(patchwork)
   require(ggplot2)
@@ -203,24 +202,34 @@ plot_QC_violin <- function(sobj){
 
   plot_data <- tidyd_qcp_violin(sobj)
   n_samples <- plot_data$orig.ident |> unique() |> length()
+  scatter_size = 1200/dim(sobj)[1]
 
   nUMI_violin <- plot_data |>
     dplyr::filter(key == 'nUMIs') |>
     ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
-    geom_violin() + scale_fill_manual(values =
-                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    geom_jitter(color = "gray", width = 0.45, size = scatter_size, alpha = 0.5 ) +
+    geom_violin() +
+    scale_fill_manual(values = bomb_palette(n_samples)) +
+    facet_grid(~ key) +
+    theme_classic() +
     theme(legend.position = "none", axis.title = element_blank())
+
   nGenes_violin <- plot_data |>
     dplyr::filter(key == 'nGenes') |>
     ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
-    geom_violin() + scale_fill_manual(values =
-                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    geom_jitter(color = "gray", width = 0.45, size = scatter_size, alpha = 0.5) +
+    geom_violin() +
+    scale_fill_manual(values = bomb_palette(n_samples)) +
+    facet_grid(~ key) +
+    theme_classic() +
     theme(legend.position = "none", axis.title = element_blank())
+
   pct_mito_violin <- plot_data |>
     dplyr::filter(key == 'pct_mito') |>
     ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
-    geom_violin() + scale_fill_manual(values =
-                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    geom_jitter(color = "gray", width = 0.45, size = scatter_size, alpha = 0.5) +
+    geom_violin() +
+    scale_fill_manual(values = bomb_palette(n_samples)) + facet_grid(~ key) + theme_classic() +
     theme(legend.position = "none", axis.title = element_blank())
 
   return(nUMI_violin + nGenes_violin + pct_mito_violin)
