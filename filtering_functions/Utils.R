@@ -228,11 +228,17 @@ plot_QC_violin <- function(sobj){
 
 #c("cpm","log","scran","asinh")
 normalize_all <- function(sc_input_object,method = "cpm") {
+  require(scuttle)
+  require(scRNAseq)
+  require(SingleCellExperiment)
+  require(tidyverse)
+  require(Seurat)
+  #print("0")
   if(class(sc_input_object) == "Seurat")
   {sce <- Seurat::as.SingleCellExperiment(sc_input_object)}
   else if (class(sc_input_object) == "SingleCellExperiment")
   {sce <- sc_input_object}
-
+  #print("1")
   if (method == "cpm") {
     assay(sce, "normed") <- scuttle::normalizeCounts(sce, log=FALSE, transform = "none", size.factors=librarySizeFactors(sce), pseudo.count=0)
   }
@@ -250,8 +256,9 @@ normalize_all <- function(sc_input_object,method = "cpm") {
   else if(method == "asihn"){
     assay(sce, "normed") <- scuttle::normalizeCounts(sce, log=FALSE, transform = "asihn",size.factors=librarySizeFactors(sce), pseudo.count=1)
   }
-  #tmp <- assay(sce, "normed")
-  return(Seurat::as.Seurat(sce, counts = "counts", data = "normed"))
+  print("2")
+  seurat_norm_obj <- Seurat::as.Seurat(sce, counts = "counts", data = "normed")
+  return(seurat_norm_obj)
 }
 
 
@@ -323,15 +330,14 @@ normalize_and_plot_main <- function(path_to_filtered_seurat_obj, normalization_m
 # The first is the clustered UMAP plot
 # The second is the the Seurat object with the clustering info
 # Would need to check if the number of clusters shown in the plot is correct when you change resolution
-cluster <- function(path_to_dim_reduced_seurat_obj, clustering_resolution = 0.3){
-  dim_reduced_seurat_obj <- readRDS(path_to_dim_reduced_seurat_obj)
+cluster <- function(dim_reduced_seurat_obj, clustering_resolution = 0.3){
   clustered_seurat_obj <- FindNeighbors(dim_reduced_seurat_obj, dims = 1:10)
   clustered_seurat_obj <- FindClusters(clustered_seurat_obj, resolution = clustering_resolution)
-  clustering_plot <- DimPlot(obj, reduction = "umap", group.by = paste0("RNA_snn_res.",clustering_resolution)) +
+  clustering_plot <- DimPlot(clustered_seurat_obj, reduction = "umap", group.by = paste0("RNA_snn_res.",clustering_resolution)) +
     theme_minimal() +
     xlab("UMAP 1") +
     ylab("UMAP 2") +
-    ggtitle(paste0("Clustering resolution = ", clustering_resolution,"  |  ",obj@meta.data$seurat_clusters %>% unique() %>% length()," clusters found")) +
+    ggtitle(paste0("Clustering resolution = ", clustering_resolution,"  |  ",clustered_seurat_obj@meta.data$seurat_clusters %>% unique() %>% length()," clusters found")) +
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           axis.text = element_blank(),
