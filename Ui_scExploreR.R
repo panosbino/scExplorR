@@ -60,7 +60,7 @@ ui <- fluidPage(
                      br(), br(),
                      downloadBttn("button_download_data", "Download filtered data", style = "jelly", color = "success")
                    )
-                 ),
+                 )
                )
       ),
 
@@ -176,7 +176,6 @@ server <- function(input, output, session) {
         })
 
     })
-  })
 
   observeEvent(input$btn_norm_go, {
     req(input$file_input_filtered)
