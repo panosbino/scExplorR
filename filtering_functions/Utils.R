@@ -220,13 +220,17 @@ plot_PCA <- function(dim_reduced_seurat_obj){
 
 # Main function that starts from normalization and produces PCA and UMAP plots.
 # It can take more variables, but this is good for now
+# This returns a list of 3 objects
+# The first is the 3D PCA plot
+# The second is the UMAP plot
+# And the third is the seurat obeject that has the normalized values and the dimensionality reduction
 normalize_and_plot_main <- function(path_to_filtered_seurat_obj, normalization_method = "cpm"){
   sc_filtered_object <- readRDS(path_to_filtered_seurat_obj)
   normalized_seurat_object <- normalize_all(sc_input_object = sc_filtered_object, method = normalization_method)
   dim_reduced_seurat_obj <- dim_reduction(normalized_seurat_object)
   PCA_plot <- plot_PCA(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
-  UMAP_plot <- plot_UMAP(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
-  return(list(PCA_plot,UMAP_plot))
+  UMAP_plot <- plot_umap(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
+  return(list(PCA_plot,UMAP_plot,dim_reduced_seurat_obj))
 }
 
 
