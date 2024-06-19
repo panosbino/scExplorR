@@ -21,7 +21,7 @@ import_into_sobj <- function(data_dir, project_name){
 
 get_mito_genes <- function(organism, ensembl_version){
   ensembl <- useEnsembl(biomart = 'genes',
-                        dataset = paste0(organism, '_gene_ensembl'),
+                        dataset = organism,
                         version = ensembl_version)
 
   mito_genes <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name'),
