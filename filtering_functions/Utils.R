@@ -91,22 +91,22 @@ filter_sobj <- function(sobj, min_genes = NULL, max_genes = NULL,
                         max_pct_mito = NULL){
   require(Seurat)
   if (!is.null(min_genes)) {
-    sobj <- subset(sobj, subset = nFeature_RNA >= min_genes)
+    sobj <- subset(sobj, subset = nFeature_RNA >= as.double(min_genes))
   }
   if (!is.null(max_genes)) {
-    sobj <- subset(sobj, subset = nFeature_RNA <= max_genes)
+    sobj <- subset(sobj, subset = nFeature_RNA <= as.double(max_genes))
   }
   if (!is.null(min_UMIs)) {
-    sobj <- subset(sobj, subset = nCount_RNA >= min_UMIs)
+    sobj <- subset(sobj, subset = nCount_RNA >= as.double(min_UMIs))
   }
   if (!is.null(max_UMIs)) {
-    sobj <- subset(sobj, subset = nCount_RNA >= max_UMIs)
+    sobj <- subset(sobj, subset = nCount_RNA >= as.double(max_UMIs))
   }
   if (!is.null(max_pct_mito)) {
-    sobj <- subset(sobj, subset = percent.mt <= max_pct_mito)
+    sobj <- subset(sobj, subset = percent.mt <= as.double(max_pct_mito))
   }
   if (!is.null(min_pct_mito)) {
-    sobj <- subset(sobj, subset = percent.mt >= min_pct_mito)
+    sobj <- subset(sobj, subset = percent.mt >= as.double(min_pct_mito))
   }
   return (sobj)
 }
