@@ -206,4 +206,17 @@ plot_umap <- function(dim_reduced_seurat_obj) {
     scale_color_manual(values = c("#cb353d", "#ed6240", "#f9b64e", "#6a4a57"))
 }
 
+plot_PCA <- function(dim_reduced_seurat_obj){
+  PCAs <- dim_R@reductions$pca@cell.embeddings[,1:3] %>%
+    as.data.frame() %>%
+    cbind(dim_reduced_seurat_obj$orig.ident)
+  colnames(PCAs)[4] <- "Sample"
+  PCAs$Sample <- ifelse(str_detect(PCAs$Sample,pattern = "_"),
+                        PCAs$Sample %>% str_replace(pattern = "_", replacement = " "),
+                        PCAs$Sample)
+  plotly::plot_ly(data = PCAs, x=~PC_1, y=~PC_2, z=~PC_3, type="scatter3d", mode = "markers" ,colors= c("#6a4a57"), size = 0.5)
+}
+
+
+
 
