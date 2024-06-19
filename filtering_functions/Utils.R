@@ -133,6 +133,9 @@ export_sobj <- function(sobj, path, save_as = 'rds'){
   }
   else {message('only rds is supported for now')}
 }
+get_max_ngenes <- function(sobj) {return(max(sobj@meta.data$nFeature_RNA))}
+get_max_nUMIs <- function(sobj){return(max(sobj@meta.data$nCount_RNA))}
+get_max_pct_mito <- function(sobj){return(max(sobj@meta.data$percent.mt))}
 
 
 #c("cpm","log","scran","asinh")
