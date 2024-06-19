@@ -208,7 +208,7 @@ plot_UMAP <- function(dim_reduced_seurat_obj) {
 
 # Needs further beautifying, will do later
 plot_PCA <- function(dim_reduced_seurat_obj){
-  PCAs <- dim_R@reductions$pca@cell.embeddings[,1:3] %>%
+  PCAs <- dim_reduced_seurat_obj@reductions$pca@cell.embeddings[,1:3] %>%
     as.data.frame() %>%
     cbind(dim_reduced_seurat_obj$orig.ident)
   colnames(PCAs)[4] <- "Sample"
