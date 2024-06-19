@@ -89,35 +89,37 @@ show_QC_plots <- function(sobj){
 
 filter_sobj <- function(sobj, min_genes = NULL, max_genes = NULL,
                         min_UMIs = NULL, max_UMIs = NULL,
+                        min_pct_mito = NULL,
                         max_pct_mito = NULL){
   require(Seurat)
   if (!is.null(min_genes)) {
-    message("filtering min genes")
-    sobj <- subset(sobj, subset = nFeature_RNA > min_genes)
+    sobj <- subset(sobj, subset = nFeature_RNA >= min_genes)
   }
   if (!is.null(max_genes)) {
-    message("filtering max genes")
-    sobj <- subset(sobj, subset = nFeature_RNA < max_genes)
+    sobj <- subset(sobj, subset = nFeature_RNA <= max_genes)
   }
   if (!is.null(min_UMIs)) {
-    sobj <- subset(sobj, subset = nCount_RNA > min_UMIs)
+    sobj <- subset(sobj, subset = nCount_RNA >= min_UMIs)
   }
   if (!is.null(max_UMIs)) {
-    sobj <- subset(sobj, subset = nCount_RNA > max_UMIs)
+    sobj <- subset(sobj, subset = nCount_RNA >= max_UMIs)
   }
   if (!is.null(max_pct_mito)) {
-    message("filtering high mitos")
-    sobj <- subset(sobj, subset = percent.mt < max_pct_mito)
+    sobj <- subset(sobj, subset = percent.mt <= max_pct_mito)
+  }
+  if (!is.null(min_pct_mito)) {
+    sobj <- subset(sobj, subset = percent.mt >= min_pct_mito)
   }
   return (sobj)
 }
 
 preview_filtered_sobj <- function(sobj, min_genes = NULL, max_genes = NULL,
                                   min_UMIs = NULL, max_UMIs = NULL,
+                                  min_pct_mito = NULL,
                                   max_pct_mito = NULL) {
   # returns a plot with showing QC plots of filtered data
   sobj <- filter_sobj(sobj, min_genes = min_genes, max_genes = max_genes,
-                      min_UMIs = min_UMIs, max_UMIs = max_UMIs,
+                      min_UMIs = min_UMIs, max_UMIs = max_UMIs, min_pct_mito = min_pct_mito,
                       max_pct_mito = max_pct_mito)
   preview_plot <- show_QC_plots(sobj)
   return(preview_plot)
