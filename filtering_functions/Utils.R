@@ -58,14 +58,19 @@ read_and_merge_sobjs <- function(data_rep, sample_names){
 
 
 load_and_annotate_recipe_1 <- function(data_rep, organism, ensembl_version){
-  sample_names <- list.files(data_rep)
-
-  if ("matrix.mtx.gz" %in% sample_names){
-    sample_names <- c(basename(data_rep))
-  }
-
   mito_genes <- get_mito_genes(organism, ensembl_version)
-  sobj <- read_and_merge_sobjs(data_rep, sample_names)
+  files_in_data_rep <- list.files(data_rep)
+
+  if ("matrix.mtx.gz" %in% files_in_data_rep){
+    # if we are only selecting one folder with data
+    sample_name <- c(basename(data_rep))
+    data_rep <- dirname(data_rep)
+    sobj <- import_into_sobj(data_dir = file.path(data_rep, sample_name), project_name = sample_name)
+  } else {
+    # if we are loading in multiple datasets
+    sample_names <- files_in_data_rep
+    sobj <- read_and_merge_sobjs(data_rep, sample_names)
+  }
   sobj[["percent.mt"]] <- Seurat::PercentageFeatureSet(sobj, features = mito_genes$ensembl_gene_id)
 
   return(sobj)
