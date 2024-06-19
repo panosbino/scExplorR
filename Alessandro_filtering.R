@@ -63,13 +63,52 @@ ui <- fluidPage(
                      br(), br(),
                      downloadBttn("button_download_data", "Download filtered data", style = "jelly", color = "success")
                    )
-                 ),
+                 )
                )
+      ),tabPanel("Normalization",
+                 div(
+                   style = "padding: 20px; border: 1px solid #ddd; border-radius: 10px;",
+                   fluidRow(
+                     column(
+                       12,
+                       fileInput("file_input_filtered", "File Input:", buttonLabel = "Browse...", placeholder = "No file selected"),
+                       selectInput("method", "Method", choices = c("cpm", "log", "scran", "asinh", "log_geom")),
+                       actionBttn("btn_norm_go", "Explode!", style = "jelly", color = "danger"),
+                       br(), br(),
+                       downloadBttn("button_download_norm", "Download", style = "jelly", color = "success")
+                     )
+                   ),
+                   fluidRow(
+                     column(
+                       12,
+                       verbatimTextOutput("text_output_three"),
+                       plotlyOutput("plot_output_PCA"),
+                       plotOutput("plot_output_UMAP")
+                     )
+                   )
+                 )
       ),
-
+      tabPanel("Clustering",
+               div(
+                 style = "padding: 20px; border: 1px solid #ddd; border-radius: 10px;",
+                 fluidRow(
+                   column(
+                     12,
+                     sliderInput("clustering_resolution", "Clustering resolution range", min = 0, max = 2, value = c(0, 2), step = 0.1),
+                     actionBttn("btn_cluster_go", "Explode!", style = "jelly", color = "danger")
+                   )
+                 ),
+                 fluidRow(
+                   column(
+                     12,
+                     plotOutput("clustered_UMAP")
                    )
                  )
                )
+      )
+    )
+  )
+)
 
 
 
@@ -171,12 +210,56 @@ server <- function(input, output, session) {
       saveRDS(processed_data, file)
     }
   )
+  observeEvent(input$btn_norm_go, {
+    req(input$file_input_filtered)
+    req(input$method)
 
+    print(input$file_input_filtered$name)
+    print(input$method)
 
+    # Read the uploaded file
+    sc_filtered_object <- readRDS(input$file_input_filtered$datapath)
 
+    print("File loaded successfully")
 
+    # Normalize the data
+    normalized_seurat_object <- normalize_all(sc_input_object = sc_filtered_object, method = input$method)
+    print("Normalization complete")
 
+    # Perform dimensionality reduction
+    rv$dim_reduced_seurat_obj <- dim_reduction(normalized_seurat_object)
+    print("Dimensionality reduction complete")
+
+    # Generate PCA and UMAP plots
+    PCA_plot <- plot_PCA(dim_reduced_seurat_obj = rv$dim_reduced_seurat_obj)
+    UMAP_plot <- plot_UMAP(dim_reduced_seurat_obj = rv$dim_reduced_seurat_obj)
+
+    # Render the plots
+    output$plot_output_PCA <- renderPlotly({
+      PCA_plot
+    })
+
+    output$plot_output_UMAP <- renderPlot({
+      UMAP_plot
+    })
+  })
+
+  observeEvent(input$btn_cluster_go, {
+    req(rv$dim_reduced_seurat_obj)
+
+    # Perform clustering
+    clustering_res <- cluster(rv$dim_reduced_seurat_obj, clustering_resolution = input$clustering_resolution)
+
+    # Assuming clustered_UMAP is the UMAP plot
+    output$clustered_UMAP <- renderPlot({
+      clustering_res$UMAP
+    })
+  })
 }
+
+
+
+
 
 shinyApp(ui = ui, server = server)
 
