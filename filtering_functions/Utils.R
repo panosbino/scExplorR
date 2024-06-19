@@ -153,7 +153,7 @@ get_max_nUMIs <- function(sobj){return(max(sobj@meta.data$nCount_RNA))}
 get_max_pct_mito <- function(sobj){return(max(sobj@meta.data$percent.mt))}
 
 get_bomb_palette <- function(n_colors){
-  bomb_colors <- c('#cb353d', '#f9b64e', '#ed6240', '#563d43')
+  bomb_colors <- c('#cb353d', '#f9b64e', '#ed6240', '#6a4a57')
   bomb_palette <- colorRampPalette(bomb_colors)
   return(bomb_palette)
 }
