@@ -78,12 +78,10 @@ load_and_annotate_recipe_1 <- function(data_rep, organism, ensembl_version){
 
 show_QC_plots <- function(sobj){
   require(patchwork)
-  top <- VlnPlot(sobj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-
-  bottom_1 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "percent.mt")
-  bottom_2 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
-
-  return(top / (bottom_1 + bottom_2))
+  top <- plot_QC_violin(sobj)
+  bottom_left <- plot_QC_scatter_left(sobj)
+  bottom_right <- plot_QC_scatter_right(sobj)
+  return(top / (bottom_left + bottom_right))
 
 }
 
@@ -139,6 +137,94 @@ get_max_ngenes <- function(sobj) {return(max(sobj@meta.data$nFeature_RNA))}
 get_max_nUMIs <- function(sobj){return(max(sobj@meta.data$nCount_RNA))}
 get_max_pct_mito <- function(sobj){return(max(sobj@meta.data$percent.mt))}
 
+get_bomb_palette <- function(n_colors){
+  bomb_colors <- c('#cb353d', '#f9b64e', '#ed6240', '#563d43')
+  bomb_palette <- colorRampPalette(bomb_colors)
+  return(bomb_palette)
+}
+
+plot_QC_scatter_left <- function(sobj){
+  plot_data <- tidyd_qcp_point(sobj)
+  bomb_palette <- get_bomb_palette()
+  n_samples <- plot_data$orig.ident |> unique() |> length()
+
+  scatter_size = 1200/dim(plot_data)[1]
+
+  pl <- plot_data |>
+    ggplot(aes(x = nGenes, y = pct_mito, color = orig.ident),) +
+    geom_point(size = scatter_size) + theme_classic() +
+    scale_color_manual(values = bomb_palette(n_samples)) +
+    scale_y_continuous(expand = expansion(mult = c(0.01, 0))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0))) +
+    theme(legend.position = "none")
+
+  return(pl)
+}
+
+plot_QC_scatter_right<- function(sobj){
+  plot_data <- tidyd_qcp_point(sobj)
+  bomb_palette <- get_bomb_palette()
+  n_samples <- plot_data$orig.ident |> unique() |> length()
+
+  scatter_size = 1200/dim(plot_data)[1]
+
+  pl <- plot_data |>
+    ggplot(aes(x = nGenes, y = nUMIs, color = orig.ident)) +
+    geom_point(size = scatter_size) + theme_classic() +
+    scale_color_manual(values = bomb_palette(n_samples)) +
+    scale_y_continuous(expand = expansion(mult = c(0.01, 0))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0))) +
+    theme(legend.position = "none")
+  return(pl)
+}
+
+tidyd_qcp_point <- function(sobj){
+  plot_data <- sobj@meta.data |>
+    dplyr::rename(nUMIs = 'nCount_RNA',
+                  nGenes = 'nFeature_RNA',
+                  pct_mito = 'percent.mt')
+  return(plot_data)
+}
+
+tidyd_qcp_violin <- function(sobj) {
+  plot_data <- sobj@meta.data |>
+    dplyr::rename(nUMIs = 'nCount_RNA',
+           nGenes = 'nFeature_RNA',
+           pct_mito = 'percent.mt') |>
+    tidyr::gather('key', 'value',-orig.ident)
+
+  return(plot_data)
+}
+
+plot_QC_violin <- function(sobj){
+  require(patchwork)
+  require(ggplot2)
+  bomb_palette <- get_bomb_palette()
+
+  plot_data <- tidyd_qcp_violin(sobj)
+  n_samples <- plot_data$orig.ident |> unique() |> length()
+
+  nUMI_violin <- plot_data |>
+    dplyr::filter(key == 'nUMIs') |>
+    ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
+    geom_violin() + scale_fill_manual(values =
+                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    theme(legend.position = "none", axis.title = element_blank())
+  nGenes_violin <- plot_data |>
+    dplyr::filter(key == 'nGenes') |>
+    ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
+    geom_violin() + scale_fill_manual(values =
+                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    theme(legend.position = "none", axis.title = element_blank())
+  pct_mito_violin <- plot_data |>
+    dplyr::filter(key == 'pct_mito') |>
+    ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
+    geom_violin() + scale_fill_manual(values =
+                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    theme(legend.position = "none", axis.title = element_blank())
+
+  return(nUMI_violin + nGenes_violin + pct_mito_violin)
+}
 
 #c("cpm","log","scran","asinh")
 normalize_all <- function(sc_input_object,method = "cpm") {
