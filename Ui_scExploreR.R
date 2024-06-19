@@ -49,13 +49,16 @@ ui <- fluidPage(
                      selectizeInput("organism", "Organism", choices = get_possible_organisms(109)),
                      actionBttn("btn_filter_go", "Explode!", style = "jelly", color = "danger"),
                      br(), br(),
-                     numericInput('gene_max', 'Filter gene max', 3, min = 0, max = 100000),
-                     numericInput('gene_min', 'Filter hene min', 3, min = 0, max = 100000),
-                     numericInput('count_max', 'Filter count max', 3, min = 0, max = 100000),
-                     numericInput('count_min', 'Filter count min', 3, min = 0, max = 100000),
                      plotOutput("plot_output"),
                      br(), br(),
-                     actionBttn("btn_filter_go", "Explode...again!", style = "jelly", color = "danger"),
+                     numericInput('gene_max', 'Filter gene max', 3, min = 0, max = 100000),
+                     numericInput('gene_min', 'Filter gene min', 3, min = 0, max = 100000),
+                     numericInput('count_max', 'Filter UMI max', 3, min = 0, max = 100000),
+                     numericInput('count_min', 'Filter UMI min', 3, min = 0, max = 100000),
+                     numericInput('mt_max', 'Filter mito max', 3, min = 0, max = 100000),
+                     br(), br(),
+                     actionBttn("btn_filter_go_again", "Explode...again!", style = "jelly", color = "danger"),
+                     plotOutput("plot_output_again"),
                      downloadBttn("button_download_plot", "Download Plot", style = "jelly", color = "success"),
                      br(), br(),
                      downloadBttn("button_download_data", "Download filtered data", style = "jelly", color = "success")
@@ -122,10 +125,18 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
+
+
+
+#create reactuve value object
+  reactive_sobj <- reactiveValues(sobj = NULL)
+
+
   volumes <- c(Home = fs::path_home(),
                "R Installation" = R.home(),
                getVolumes()())
 
+  #set directory selector
   shinyDirChoose(input,
                  "directory",
                  roots = volumes,
@@ -133,6 +144,7 @@ server <- function(input, output, session) {
                  restrictions = system.file(package = "base"),
                  allowDirCreate = FALSE)
 
+  #extract directory path of the submitted folder
   getdata <- reactive({
     req(input$directory)
     parseDirPath(volumes, input$directory)
@@ -141,7 +153,7 @@ server <- function(input, output, session) {
 
 
 
-
+#observe event for plotting data
   observeEvent(input$btn_filter_go, {
     req(input$directory, input$ensembl, input$organism)
 
@@ -149,27 +161,31 @@ server <- function(input, output, session) {
     ensembl_version <- input$ensembl
     organism <- input$organism
 
-      # Perform filtering or other operations here
       sobj <- load_and_annotate_recipe_1(data_rep, organism, ensembl_version)
 
+      reactive_sobj$sobj <- sobj
+
       output$plot_output <- renderPlot({
-        show_QC_plots(sobj)
-      })
+        show_QC_plots(reactive_sobj$sobj)
+
+
+        })
+
     })
 
 
-  observeEvent(input$btn_re_filter_go, {
-    req(input$directory, )
 
-    data_rep <- getdata()
-    ensembl_version <- input$ensembl
-    organism <- input$organism
+  observeEvent(input$btn_filter_go_again, {
+    req(reactive_sobj$sobj, input$gene_min, input$gene_max, input$mt_max, input$count_max, input$count_min)
 
-    # Perform filtering number 2
-    preview_filtered_sobj(sobj, min_genes = 400, max_genes = 3000, max_pct_mito = 25)
 
-    output$plot_output <- renderPlot({
-      show_QC_plots(preview_filtered_sobj)
+
+
+    output$plot_output_again <- renderPlot({
+      preview_filtered_sobj(reactive_sobj$sobj, min_genes = input$gene_min, max_genes = input$gene_max, max_pct_mito = input$mt_max ,
+                            max_UMIs = input$count_max, min_UMIs = input$count_min)
+
+
     })
   })
 
@@ -186,14 +202,20 @@ server <- function(input, output, session) {
 
   output$button_download_data <- downloadHandler(
     filename = function() {
-      paste("filtered_data", Sys.Date(), ".rds", sep = "")
+      "processed_data.rds"
     },
     content = function(file) {
-      saveRDS(getdata(), file)
+      processed_data <- commit_filtered_sobj(
+        reactive_sobj$sobj,
+        min_genes = input$gene_min,
+        max_genes = input$gene_max,
+        max_pct_mito = input$mt_max,
+        max_UMIs = input$count_max,
+        min_UMIs = input$count_min
+      )
+      saveRDS(processed_data, file)
     }
   )
-
-
 
 
 
