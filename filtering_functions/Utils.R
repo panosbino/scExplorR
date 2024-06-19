@@ -84,31 +84,38 @@ show_QC_plots <- function(sobj){
   return(top / (bottom_left + bottom_right))
 
 }
-
 filter_sobj <- function(sobj, min_genes = NULL, max_genes = NULL,
                         min_UMIs = NULL, max_UMIs = NULL,
-                        min_pct_mito = NULL,
-                        max_pct_mito = NULL){
+                        min_pct_mito = NULL, max_pct_mito = NULL) {
   require(Seurat)
+  require(SeuratObject)
+
+  # Create logical vector for subsetting
+  keep <- rep(TRUE, ncol(sobj))
+
   if (!is.null(min_genes)) {
-    sobj <- subset(sobj, subset = nFeature_RNA >= as.double(min_genes))
+    keep <- keep & sobj$nFeature_RNA >= as.double(min_genes)
   }
   if (!is.null(max_genes)) {
-    sobj <- subset(sobj, subset = nFeature_RNA <= as.double(max_genes))
+    keep <- keep & sobj$nFeature_RNA <= as.double(max_genes)
   }
   if (!is.null(min_UMIs)) {
-    sobj <- subset(sobj, subset = nCount_RNA >= as.double(min_UMIs))
+    keep <- keep & sobj$nCount_RNA >= as.double(min_UMIs)
   }
   if (!is.null(max_UMIs)) {
-    sobj <- subset(sobj, subset = nCount_RNA >= as.double(max_UMIs))
-  }
-  if (!is.null(max_pct_mito)) {
-    sobj <- subset(sobj, subset = percent.mt <= as.double(max_pct_mito))
+    keep <- keep & sobj$nCount_RNA <= as.double(max_UMIs)
   }
   if (!is.null(min_pct_mito)) {
-    sobj <- subset(sobj, subset = percent.mt >= as.double(min_pct_mito))
+    keep <- keep & sobj$percent.mt >= as.double(min_pct_mito)
   }
-  return (sobj)
+  if (!is.null(max_pct_mito)) {
+    keep <- keep & sobj$percent.mt <= as.double(max_pct_mito)
+  }
+
+  # Subset the Seurat object using logical vector
+  sobj <- sobj[, keep]
+
+  return(sobj)
 }
 
 preview_filtered_sobj <- function(sobj, min_genes = NULL, max_genes = NULL,
