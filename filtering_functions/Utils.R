@@ -126,3 +126,32 @@ dim_reduction <- function(normalized_seurat_obj){
   dim_reduced_seurat_obj <- RunUMAP(dim_reduced_seurat_obj, dims = 1:10)
   return(dim_reduced_seurat_obj)
 }
+
+
+
+plot_umap <- function(dim_reduced_seurat_obj) {
+  UMAPs <- dim_reduced_seurat_obj@reductions$umap@cell.embeddings %>% cbind(dim_reduced_seurat_obj$orig.ident) %>% as.data.frame()
+  UMAPs$umap_1 <- UMAPs$umap_1 %>% as.numeric()
+  UMAPs$umap_2 <- UMAPs$umap_2 %>% as.numeric()
+  colnames(UMAPs)[3] <- "Sample"
+  UMAPs$Sample <- ifelse(str_detect(UMAPs$Sample,pattern = "_"),
+                         UMAPs$Sample %>% str_replace(pattern = "_", replacement = " "),
+                         UMAPs$Sample)
+  ggplot() + geom_point(data = UMAPs, mapping = aes(x = umap_1, y = umap_2, color = Sample), size =0.5) +
+    theme_minimal() +
+    xlab("UMAP 1") +
+    ylab("UMAP 2") +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_text(size = 20),
+          legend.position="top",
+          legend.text = element_text(size = 18),
+          legend.title = element_blank(),
+          strip.text = element_blank()) +
+    facet_wrap(~Sample, nrow = 2,) +
+    guides(colour = guide_legend(override.aes = list(size=10))) +
+    scale_color_manual(values = c("#cb353d", "#ed6240", "#f9b64e", "#6a4a57"))
+}
+
+
