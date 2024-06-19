@@ -303,7 +303,7 @@ plot_UMAP <- function(dim_reduced_seurat_obj) {
 
 # Needs further beautifying, will do later
 plot_PCA <- function(dim_reduced_seurat_obj){
-  PCAs <- dim_R@reductions$pca@cell.embeddings[,1:3] %>%
+  PCAs <- dim_reduced_seurat_obj@reductions$pca@cell.embeddings[,1:3] %>%
     as.data.frame() %>%
     cbind(dim_reduced_seurat_obj$orig.ident)
   colnames(PCAs)[4] <- "Sample"
@@ -324,7 +324,7 @@ normalize_and_plot_main <- function(path_to_filtered_seurat_obj, normalization_m
   normalized_seurat_object <- normalize_all(sc_input_object = sc_filtered_object, method = normalization_method)
   dim_reduced_seurat_obj <- dim_reduction(normalized_seurat_object)
   PCA_plot <- plot_PCA(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
-  UMAP_plot <- plot_umap(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
+  UMAP_plot <- plot_UMAP(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
   return(list(PCA_plot,UMAP_plot,dim_reduced_seurat_obj))
 }
 
