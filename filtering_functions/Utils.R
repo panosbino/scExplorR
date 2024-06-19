@@ -181,7 +181,7 @@ dim_reduction <- function(normalized_seurat_obj){
 
 
 # Needs to be generalized for different number of samples
-plot_umap <- function(dim_reduced_seurat_obj) {
+plot_UMAP <- function(dim_reduced_seurat_obj) {
   UMAPs <- dim_reduced_seurat_obj@reductions$umap@cell.embeddings %>% cbind(dim_reduced_seurat_obj$orig.ident) %>% as.data.frame()
   UMAPs$umap_1 <- UMAPs$umap_1 %>% as.numeric()
   UMAPs$umap_2 <- UMAPs$umap_2 %>% as.numeric()
@@ -206,6 +206,7 @@ plot_umap <- function(dim_reduced_seurat_obj) {
     scale_color_manual(values = c("#cb353d", "#ed6240", "#f9b64e", "#6a4a57"))
 }
 
+# Needs further beautifying, will do later
 plot_PCA <- function(dim_reduced_seurat_obj){
   PCAs <- dim_R@reductions$pca@cell.embeddings[,1:3] %>%
     as.data.frame() %>%
@@ -217,6 +218,16 @@ plot_PCA <- function(dim_reduced_seurat_obj){
   plotly::plot_ly(data = PCAs, x=~PC_1, y=~PC_2, z=~PC_3, type="scatter3d", mode = "markers" ,colors= c("#6a4a57"), size = 0.5)
 }
 
+# Main function that starts from normalization and produces PCA and UMAP plots.
+# It can take more variables, but this is good for now
+normalize_and_plot_main <- function(path_to_filtered_seurat_obj, normalization_method = "cpm"){
+  sc_filtered_object <- readRDS(path_to_filtered_seurat_obj)
+  normalized_seurat_object <- normalize_all(sc_input_object = sc_filtered_object, method = normalization_method)
+  dim_reduced_seurat_obj <- dim_reduction(normalized_seurat_object)
+  PCA_plot <- plot_PCA(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
+  UMAP_plot <- plot_UMAP(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
+  return(list(PCA_plot,UMAP_plot))
+}
 
 
 
