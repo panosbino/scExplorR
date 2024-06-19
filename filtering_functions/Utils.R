@@ -84,19 +84,23 @@ normalize_all <- function(sc_input_object,method = "cpm") {
   {sce <- sc_input_object}
 
   if (method == "cpm") {
-    assay(sce, "normed") <- scuttle::calculateCPM(sce)
+    assay(sce, "normed") <- scuttle::normalizeCounts(sce, log=FALSE, transform = "none", size.factors=librarySizeFactors(sce), pseudo.count=0)
   }
   else if(method == "log"){
-    assay(sce, "normed") <- scuttle::normalizeCounts(sce, log=FALSE, transform = "log",size.factors=librarySizeFactors(sce), pseudo.count=1)
+    assay(sce, "normed") <- scuttle::normalizeCounts(sce, log=TRUE, transform = "log",size.factors=librarySizeFactors(sce), pseudo.count=1)
   }
   else if (method == "scran"){
     clusters <- scran::quickCluster(sce)
-    size_factors <- scuttle::computePooledFactors(sce, clusters=clusters)
-    assay(sce, "normed") <- scuttle::normalizeCounts(sce, log=FALSE, transform = "log",size.factors=librarySizeFactors(size_factors) , pseudo.count=1)
+    sce <- computeSumFactors(sce, clusters=clusters)
+    assay(sce, "normed") <- scuttle::normalizeCounts(sce, log=TRUE, transform = "log",size.factors= sizeFactors(sce) , pseudo.count=1)
   }
-  else if(method == "asinh"){
+  else if(method == "log_geom"){
+    assay(sce, "normed") <- scuttle::normalizeCounts(sce, log=TRUE, transform = "log",size.factors=geometricSizeFactors(sce), pseudo.count=1)
+  }
+  else if(method == "asihn"){
     assay(sce, "normed") <- scuttle::normalizeCounts(sce, log=FALSE, transform = "asihn",size.factors=librarySizeFactors(sce), pseudo.count=1)
   }
+  #tmp <- assay(sce, "normed")
   return(Seurat::as.Seurat(sce, counts = "counts", data = "normed"))
 }
 
