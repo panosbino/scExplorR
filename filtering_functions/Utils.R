@@ -115,6 +115,14 @@ filter_sobj <- function(sobj, min_genes = NULL, max_genes = NULL,
   # Subset the Seurat object using logical vector
   sobj <- sobj[, keep]
 
+  # Create logical vector for subsetting features
+  feature_counts <- rowSums(sobj[['RNA']]$counts)
+  keep_features <- feature_counts >= 3
+
+  # Subset the Seurat object using logical vector for features
+  sobj <- sobj[keep_features, ]
+
+
   return(sobj)
 }
 

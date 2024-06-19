@@ -9,9 +9,11 @@ format: html
 ```{r}
 source("filtering_functions/Utils.R")
 ```
+
+
 ## Editing qc plots
 ```{r}
-data_rep <- './sample_data/'
+data_rep <- './sample_data'
 organism = "mfascicularis_gene_ensembl"
 ensembl_version = 109
 
@@ -20,13 +22,35 @@ show_QC_plots(sobj)
 ```
 
 ```{r}
-preview_filtered_sobj(sobj, min_genes = 400, max_genes = 3000, max_pct_mito = 25)
+preview_filtered_sobj(sobj, min_genes = 400, max_genes = 2000, max_pct_mito = 20)
 
+
+as.double('20')
 ```
 
 ```{r}
-sobj <- commit_filtered_sobj(sobj, min_genes = 400, max_genes = 3000, max_pct_mito = 25)
+sobj <- commit_filtered_sobj(sobj, min_genes = 400, max_genes = 3000, max_pct_mito = 20)
 
+
+
+sobj
+
+subsample_cells <- function(seurat_obj, n_cells) {
+  
+  # Ensure that n_cells is not greater than the total number of cells in the Seurat object
+  n_cells <- min(n_cells, ncol(seurat_obj))
+  
+  # Get the cell names
+  cell_names <- colnames(seurat_obj)
+  
+  # Randomly select n_cells cell names
+  selected_cells <- sample(cell_names, n_cells)
+  
+  # Subset the Seurat object to keep only the selected cells
+  subsetted_seurat_obj <- subset(seurat_obj, cells = selected_cells)
+  return(subsetted_seurat_obj)
+}
+sobj[['RNA']]$counts
 ```
 
 # Loaading
