@@ -78,12 +78,10 @@ load_and_annotate_recipe_1 <- function(data_rep, organism, ensembl_version){
 
 show_QC_plots <- function(sobj){
   require(patchwork)
-  top <- VlnPlot(sobj, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-
-  bottom_1 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "percent.mt")
-  bottom_2 <- FeatureScatter(sobj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
-
-  return(top / (bottom_1 + bottom_2))
+  top <- plot_QC_violin(sobj)
+  bottom_left <- plot_QC_scatter_left(sobj)
+  bottom_right <- plot_QC_scatter_right(sobj)
+  return(top / (bottom_left + bottom_right))
 
 }
 
@@ -139,6 +137,94 @@ get_max_ngenes <- function(sobj) {return(max(sobj@meta.data$nFeature_RNA))}
 get_max_nUMIs <- function(sobj){return(max(sobj@meta.data$nCount_RNA))}
 get_max_pct_mito <- function(sobj){return(max(sobj@meta.data$percent.mt))}
 
+get_bomb_palette <- function(n_colors){
+  bomb_colors <- c('#cb353d', '#f9b64e', '#ed6240', '#563d43')
+  bomb_palette <- colorRampPalette(bomb_colors)
+  return(bomb_palette)
+}
+
+plot_QC_scatter_left <- function(sobj){
+  plot_data <- tidyd_qcp_point(sobj)
+  bomb_palette <- get_bomb_palette()
+  n_samples <- plot_data$orig.ident |> unique() |> length()
+
+  scatter_size = 1200/dim(plot_data)[1]
+
+  pl <- plot_data |>
+    ggplot(aes(x = nGenes, y = pct_mito, color = orig.ident),) +
+    geom_point(size = scatter_size) + theme_classic() +
+    scale_color_manual(values = bomb_palette(n_samples)) +
+    scale_y_continuous(expand = expansion(mult = c(0.01, 0))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0))) +
+    theme(legend.position = "none")
+
+  return(pl)
+}
+
+plot_QC_scatter_right<- function(sobj){
+  plot_data <- tidyd_qcp_point(sobj)
+  bomb_palette <- get_bomb_palette()
+  n_samples <- plot_data$orig.ident |> unique() |> length()
+
+  scatter_size = 1200/dim(plot_data)[1]
+
+  pl <- plot_data |>
+    ggplot(aes(x = nGenes, y = nUMIs, color = orig.ident)) +
+    geom_point(size = scatter_size) + theme_classic() +
+    scale_color_manual(values = bomb_palette(n_samples)) +
+    scale_y_continuous(expand = expansion(mult = c(0.01, 0))) +
+    scale_x_continuous(expand = expansion(mult = c(0.01, 0))) +
+    theme(legend.position = "none")
+  return(pl)
+}
+
+tidyd_qcp_point <- function(sobj){
+  plot_data <- sobj@meta.data |>
+    dplyr::rename(nUMIs = 'nCount_RNA',
+                  nGenes = 'nFeature_RNA',
+                  pct_mito = 'percent.mt')
+  return(plot_data)
+}
+
+tidyd_qcp_violin <- function(sobj) {
+  plot_data <- sobj@meta.data |>
+    dplyr::rename(nUMIs = 'nCount_RNA',
+           nGenes = 'nFeature_RNA',
+           pct_mito = 'percent.mt') |>
+    tidyr::gather('key', 'value',-orig.ident)
+
+  return(plot_data)
+}
+
+plot_QC_violin <- function(sobj){
+  require(patchwork)
+  require(ggplot2)
+  bomb_palette <- get_bomb_palette()
+
+  plot_data <- tidyd_qcp_violin(sobj)
+  n_samples <- plot_data$orig.ident |> unique() |> length()
+
+  nUMI_violin <- plot_data |>
+    dplyr::filter(key == 'nUMIs') |>
+    ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
+    geom_violin() + scale_fill_manual(values =
+                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    theme(legend.position = "none", axis.title = element_blank())
+  nGenes_violin <- plot_data |>
+    dplyr::filter(key == 'nGenes') |>
+    ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
+    geom_violin() + scale_fill_manual(values =
+                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    theme(legend.position = "none", axis.title = element_blank())
+  pct_mito_violin <- plot_data |>
+    dplyr::filter(key == 'pct_mito') |>
+    ggplot(aes(x = orig.ident, y = value, fill = orig.ident)) +
+    geom_violin() + scale_fill_manual(values =
+                                        bomb_palette(n_samples)) + facet_grid( ~ key) + theme_classic() +
+    theme(legend.position = "none", axis.title = element_blank())
+
+  return(nUMI_violin + nGenes_violin + pct_mito_violin)
+}
 
 #c("cpm","log","scran","asinh")
 normalize_all <- function(sc_input_object,method = "cpm") {
@@ -208,7 +294,7 @@ plot_UMAP <- function(dim_reduced_seurat_obj) {
 
 # Needs further beautifying, will do later
 plot_PCA <- function(dim_reduced_seurat_obj){
-  PCAs <- dim_R@reductions$pca@cell.embeddings[,1:3] %>%
+  PCAs <- dim_reduced_seurat_obj@reductions$pca@cell.embeddings[,1:3] %>%
     as.data.frame() %>%
     cbind(dim_reduced_seurat_obj$orig.ident)
   colnames(PCAs)[4] <- "Sample"
@@ -229,9 +315,32 @@ normalize_and_plot_main <- function(path_to_filtered_seurat_obj, normalization_m
   normalized_seurat_object <- normalize_all(sc_input_object = sc_filtered_object, method = normalization_method)
   dim_reduced_seurat_obj <- dim_reduction(normalized_seurat_object)
   PCA_plot <- plot_PCA(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
-  UMAP_plot <- plot_umap(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
+  UMAP_plot <- plot_UMAP(dim_reduced_seurat_obj = dim_reduced_seurat_obj)
   return(list(PCA_plot,UMAP_plot,dim_reduced_seurat_obj))
 }
 
+# This returns a list of 2 objects
+# The first is the clustered UMAP plot
+# The second is the the Seurat object with the clustering info
+# Would need to check if the number of clusters shown in the plot is correct when you change resolution
+cluster <- function(path_to_dim_reduced_seurat_obj, clustering_resolution = 0.3){
+  dim_reduced_seurat_obj <- readRDS(path_to_dim_reduced_seurat_obj)
+  clustered_seurat_obj <- FindNeighbors(dim_reduced_seurat_obj, dims = 1:10)
+  clustered_seurat_obj <- FindClusters(clustered_seurat_obj, resolution = clustering_resolution)
+  clustering_plot <- DimPlot(obj, reduction = "umap", group.by = paste0("RNA_snn_res.",clustering_resolution)) +
+    theme_minimal() +
+    xlab("UMAP 1") +
+    ylab("UMAP 2") +
+    ggtitle(paste0("Clustering resolution = ", clustering_resolution,"  |  ",obj@meta.data$seurat_clusters %>% unique() %>% length()," clusters found")) +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_text(size = 20),
+          #legend.text = element_text(size = 18),
+          legend.position = "none",
+          plot.title = element_text(size = 20, hjust = 0.5),
+    )
+  return(list(clustering_plot,clustered_seurat_obj))
+}
 
 
