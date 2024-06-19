@@ -178,7 +178,7 @@ dim_reduction <- function(normalized_seurat_obj){
 }
 
 
-
+# Needs to be generalized for different number of samples
 plot_umap <- function(dim_reduced_seurat_obj) {
   UMAPs <- dim_reduced_seurat_obj@reductions$umap@cell.embeddings %>% cbind(dim_reduced_seurat_obj$orig.ident) %>% as.data.frame()
   UMAPs$umap_1 <- UMAPs$umap_1 %>% as.numeric()
