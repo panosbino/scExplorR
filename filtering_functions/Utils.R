@@ -352,8 +352,11 @@ normalize_and_plot_main <- function(path_to_filtered_seurat_obj, normalization_m
 # The second is the the Seurat object with the clustering info
 # Would need to check if the number of clusters shown in the plot is correct when you change resolution
 cluster <- function(dim_reduced_seurat_obj, clustering_resolution = 0.3){
+  print("Find_Neighbours")
   clustered_seurat_obj <- FindNeighbors(dim_reduced_seurat_obj, dims = 1:10)
-  clustered_seurat_obj <- FindClusters(clustered_seurat_obj, resolution = clustering_resolution)
+  print("Find_Clusters")
+  clustered_seurat_obj <- isolate(FindClusters(clustered_seurat_obj, resolution = clustering_resolution))
+  print("Clusters_found")
   clustering_plot <- DimPlot(clustered_seurat_obj, reduction = "umap", group.by = paste0("RNA_snn_res.",clustering_resolution)) +
     theme_minimal() +
     xlab("UMAP 1") +
@@ -367,7 +370,11 @@ cluster <- function(dim_reduced_seurat_obj, clustering_resolution = 0.3){
           legend.position = "none",
           plot.title = element_text(size = 20, hjust = 0.5),
     )
+  print("Make_plot")
+  clustering_plot <- ggplotify::as.ggplot(clustering_plot)
+  print("Plot_made")
   return(list(clustering_plot,clustered_seurat_obj))
+  print("done")
 }
 
 

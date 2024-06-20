@@ -126,7 +126,7 @@ server <- function(input, output, session) {
   )
 
 
-#create reactuve value object
+  #create reactuve value object
   reactive_sobj <- reactiveValues(sobj = NULL)
 
 
@@ -151,7 +151,7 @@ server <- function(input, output, session) {
 
 
 
-#observe event for plotting data
+  #observe event for plotting data
   observeEvent(input$btn_filter_go, {
     req(input$directory, input$ensembl, input$organism)
 
@@ -159,17 +159,17 @@ server <- function(input, output, session) {
     ensembl_version <- input$ensembl
     organism <- input$organism
 
-      sobj <- load_and_annotate_recipe_1(data_rep, organism, ensembl_version)
+    sobj <- load_and_annotate_recipe_1(data_rep, organism, ensembl_version)
 
-      reactive_sobj$sobj <- sobj
+    reactive_sobj$sobj <- sobj
 
-      output$plot_output <- renderPlot({
-        show_QC_plots(reactive_sobj$sobj)
+    output$plot_output <- renderPlot({
+      show_QC_plots(reactive_sobj$sobj)
 
-
-        })
 
     })
+
+  })
 
 
 
